@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simulador Arquitectura (200 Preguntas)</title>
+  <link rel="stylesheet" href="styles.css" />
+  </head>
+<body>
+
+  <div id="setupScreen" class="setup-container">
+    <div class="intro-box">
+      <img src="img/cornejo.jpg" alt="Simulador" class="setup-img" onerror="this.src='https://via.placeholder.com/150?text=CPU'">
+      <h1>Si no pasas seras como el</h1>
+      <p>Base de datos: <strong>200 Preguntas</strong> con Justificación.</p>
+      
+      <div style="margin-top: 25px; margin-bottom: 10px;">
+        <button class="btn primary" style="width: 100%; padding: 15px; font-size: 1.1rem; border: 2px solid var(--accent-blue);" onclick="startQuiz(10)">
+          ⚡ Práctica Rápida (10 Preguntas)
+        </button>
+      </div>
+
+      <p style="font-size: 0.9rem; margin-top: 20px;">O selecciona cantidad:</p>
+      
+      <div id="dynamicButtons" class="difficulty-buttons">
+        </div>
+    </div>
+  </div>
+
+  <div id="quizScreen" class="hide">
+    
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div class="branding">
+          <button id="homeBtn" class="btn-icon" title="Volver al Inicio" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">🏠</button>
+          <div style="margin-left:10px;">
+            <h1 style="margin:0; font-size:1.2rem;">Simulador Examen</h1>
+            <p style="margin:0; font-size:0.8rem; color:#666;">Arquitectura de Computadoras</p>
+          </div>
+        </div>
+
+        <div class="topbar__controls">
+          <label class="switch">
+            <input id="modeToggle" type="checkbox" checked />
+            <span class="slider"></span>
+          </label>
+          <div class="modeText">
+            <div style="font-weight:bold;">Modo Práctica</div>
+            <div style="color:#666; font-size:0.75rem;">Muestra explicación</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="pill"><span id="answered">0</span>/<span id="totalQ">0</span></div>
+        <div class="pill">Score: <span id="score">0</span>%</div>
+        <button id="gradeBtn" class="btn primary">Calificar</button>
+        <button id="resetBtn" class="btn secondary">Reiniciar</button>
+      </div>
+    </header>
+
+    <main class="container">
+      <div id="quiz"></div>
+
+      <div class="card result" id="resultCard" hidden>
+        <h2>Resultado Final</h2>
+        <div id="resultContent"></div> 
+        
+        <div class="actions" style="margin-top:20px;">
+          <button id="reviewWrongBtn" class="btn primary">Revisar Errores</button>
+          <button id="showAllBtn" class="btn secondary">Ver Todas</button>
+          <button onclick="goHome()" class="btn secondary">Volver al Inicio</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ============================================
+    // BASE DE DATOS MAESTRA (200 PREGUNTAS)
+    // ============================================
+    const MASTER_DB = [
+      // ... (Tus preguntas 1-200 se mantienen igual aquí) ...
+      {n:1, q:"¿Cuál es la diferencia fundamental entre Arquitectura y Organización?", A:"Arquitectura es lo visible al programador (ISA); Organización es la implementación física.", B:"Arquitectura es el hardware; Organización es el software.", C:"Son sinónimos.", D:"Organización se refiere a la marca del equipo.", ans:"A", why:"La arquitectura define el 'qué' (instrucciones, registros), y la organización el 'cómo' (frecuencia, buses, tecnología de chips)."},
+      {n:2, q:"¿Cuáles son las 4 funciones básicas de un computador?", A:"Procesamiento, Almacenamiento, Transferencia, Control.", B:"Encendido, Apagado, Reinicio, Suspensión.", C:"Entrada, Salida, Teclado, Monitor.", D:"Word, Excel, PowerPoint, Internet.", ans:"A", why:"Son las funciones estructurales definidas en el modelo de Von Neumann."},
+      {n:3, q:"El Bus de Direcciones es:", A:"Unidireccional (CPU -> Memoria/IO).", B:"Bidireccional.", C:"Aleatorio.", D:"Solo de entrada.", ans:"A", why:"El CPU siempre 'manda' a decir qué dirección quiere leer o escribir, por eso va del CPU hacia afuera."},
+      {n:4, q:"El Bus de Datos es:", A:"Bidireccional.", B:"Unidireccional.", C:"Solo de salida.", D:"Estático.", ans:"A", why:"Los datos deben poder entrar (lectura) y salir (escritura) del procesador."},
+      {n:5, q:"¿Qué define el ancho del Bus de Direcciones?", A:"La capacidad máxima de memoria direccionable.", B:"La velocidad del procesador.", C:"El tamaño del monitor.", D:"La cantidad de puertos USB.", ans:"A", why:"2 elevado al ancho del bus (ej. 2^32) determina cuántas casillas de memoria existen."},
+      {n:6, q:"¿Qué define el ancho del Bus de Datos?", A:"El rendimiento y cuántos bits se transfieren por ciclo.", B:"La capacidad del disco duro.", C:"La resolución de pantalla.", D:"La velocidad de internet.", ans:"A", why:"Un bus más ancho (ej. 64 bits vs 32 bits) mueve más información en el mismo tiempo."},
+      {n:7, q:"¿Qué es el Registro PC (Program Counter)?", A:"Contiene la dirección de la siguiente instrucción a ejecutar.", B:"Cuenta los programas instalados.", C:"Es el botón de encendido.", D:"Guarda el resultado de la suma.", ans:"A", why:"Es vital para el ciclo de instrucción; le dice al CPU dónde buscar la próxima orden."},
+      {n:8, q:"¿Qué contiene el Registro IR (Instruction Register)?", A:"La instrucción que se está ejecutando actualmente (OpCode).", B:"La dirección de memoria.", C:"Datos del usuario.", D:"El reloj del sistema.", ans:"A", why:"Almacena temporalmente la instrucción traída de memoria para que la Unidad de Control la decodifique."},
+      {n:9, q:"La Unidad de Control (UC) se encarga de:", A:"Decodificar instrucciones y generar señales de control.", B:"Realizar operaciones matemáticas.", C:"Almacenar archivos.", D:"Mostrar video.", ans:"A", why:"Es el 'cerebro' del CPU que coordina a los demás componentes."},
+      {n:10, q:"La ALU (Unidad Aritmético Lógica) realiza:", A:"Operaciones matemáticas (suma, resta) y lógicas (AND, OR).", B:"Control del bus.", C:"Gestión de energía.", D:"Lectura de disco.", ans:"A", why:"Es la calculadora interna del procesador."},
+      {n:11, q:"El ciclo básico de instrucción es:", A:"Fetch (Buscar) -> Decode (Decodificar) -> Execute (Ejecutar).", B:"Inicio -> Proceso -> Fin.", C:"Leer -> Escribir -> Borrar.", D:"Entrada -> Salida.", ans:"A", why:"Es el bucle infinito que realiza el procesador para ejecutar software."},
+      {n:12, q:"¿Qué es una Interrupción?", A:"Señal que suspende la ejecución actual para atender un evento.", B:"Un error fatal del sistema.", C:"Apagar el equipo.", D:"Desconectar un cable.", ans:"A", why:"Permite al hardware externo (teclado, disco) pedir atención del CPU sin que este tenga que vigilarlos siempre."},
+      {n:13, q:"¿Qué es DMA (Acceso Directo a Memoria)?", A:"Técnica para mover datos entre E/S y RAM sin usar al CPU.", B:"Un tipo de memoria RAM.", C:"Un antivirus.", D:"Una marca de procesador.", ans:"A", why:"Libera al CPU de la carga de transferencias masivas de datos, mejorando el rendimiento global."},
+      {n:14, q:"¿Qué es la Memoria Caché?", A:"Memoria pequeña y ultrarrápida entre CPU y RAM.", B:"Memoria virtual en disco.", C:"Memoria USB.", D:"Memoria ROM.", ans:"A", why:"Aprovecha el principio de localidad para tener a mano los datos más usados."},
+      {n:15, q:"El principio de Localidad Espacial sugiere que:", A:"Si accedes a una dirección, probablemente accederás a las vecinas.", B:"Si usas un dato, lo usarás de nuevo pronto.", C:"Los datos están en la nube.", D:"La memoria es infinita.", ans:"A", why:"Por eso la caché trae 'bloques' o líneas completas de memoria, no bytes sueltos."},
+      {n:16, q:"El principio de Localidad Temporal sugiere que:", A:"Si usas un dato, es probable que lo vuelvas a usar pronto.", B:"Los datos viejos se borran.", C:"El tiempo es relativo.", D:"Debes guardar rápido.", ans:"A", why:"Justifica mantener los datos recién usados en los niveles más altos de la jerarquía (L1/L2)."},
+      {n:17, q:"¿Qué es un Cache Miss?", A:"Cuando el dato buscado no está en caché y debe buscarse en RAM.", B:"Cuando se rompe la caché.", C:"Cuando la caché está llena.", D:"Un error de Windows.", ans:"A", why:"Introduce latencia (retraso) porque el CPU debe esperar a la memoria principal lenta."},
+      {n:18, q:"La Ley de Moore predecía:", A:"La duplicación de transistores en un chip cada ~18-24 meses.", B:"Que las computadoras serían gratis.", C:"Que la velocidad se duplicaría cada semana.", D:"Que los discos no fallarían.", ans:"A", why:"Fue una observación empírica sobre la miniaturización de los semiconductores."},
+      {n:19, q:"¿Qué es el Reloj (Clock) del sistema?", A:"Señal oscilante que sincroniza los circuitos digitales.", B:"La hora de Windows.", C:"Un cronómetro.", D:"La batería de la BIOS.", ans:"A", why:"Marca el paso o ritmo al que se ejecutan las operaciones en el procesador."},
+      {n:20, q:"¿Qué unidad mide la frecuencia del reloj?", A:"Hertz (Hz, MHz, GHz).", B:"Bytes.", C:"Amperios.", D:"Píxeles.", ans:"A", why:"Indica ciclos por segundo. 3 GHz = 3 mil millones de ciclos por segundo."},
+      {n:21, q:"¿Qué es el Chipset?", A:"Conjunto de chips que gestionan la comunicación entre componentes.", B:"El zócalo del CPU.", C:"La tarjeta gráfica.", D:"La memoria RAM.", ans:"A", why:"Tradicionalmente dividido en Northbridge y Southbridge, controla el flujo de datos."},
+      {n:22, q:"El Northbridge (Puente Norte) clásico conectaba:", A:"CPU, RAM y Video (AGP/PCIe) de alta velocidad.", B:"Teclado y Mouse.", C:"Discos duros.", D:"USB y Audio.", ans:"A", why:"Manejaba los componentes que requerían mayor ancho de banda y baja latencia."},
+      {n:23, q:"El Southbridge (Puente Sur) manejaba:", A:"Periféricos lentos, E/S, BIOS, SATA, USB.", B:"La memoria RAM.", C:"El procesador principal.", D:"El bus frontal.", ans:"A", why:"Se encargaba de todo lo que no necesitaba velocidad extrema."},
+      {n:24, q:"En CPUs modernos, el controlador de memoria está:", A:"Integrado dentro del propio CPU.", B:"En el disco duro.", C:"En el Southbridge.", D:"En la fuente.", ans:"A", why:"Para reducir la latencia al mínimo, se eliminó el Northbridge externo."},
+      {n:25, q:"La BIOS es:", A:"Firmware de arranque almacenado en memoria no volátil.", B:"Un sistema operativo completo.", C:"Un virus.", D:"Un programa de Office.", ans:"A", why:"Basic Input/Output System: inicializa el hardware antes de cargar el SO."},
+      {n:26, q:"POST significa:", A:"Power-On Self-Test (Autoprueba de encendido).", B:"Publicar en redes.", C:"Pre-Operating System Task.", D:"Power Off System.", ans:"A", why:"Es el diagnóstico inicial que hace la BIOS para verificar RAM, CPU y video."},
+      {n:27, q:"La batería CR2032 en la placa sirve para:", A:"Mantener la configuración del CMOS y el reloj (RTC).", B:"Alimentar el ventilador.", C:"Dar energía al CPU.", D:"Encender los LEDs.", ans:"A", why:"Si se agota, la PC olvida la hora y el orden de arranque al desconectarse."},
+      {n:28, q:"UEFI es:", A:"El sucesor moderno de la BIOS, más seguro y gráfico.", B:"Un tipo de USB.", C:"Una marca de placa.", D:"Un conector de video.", ans:"A", why:"Permite arranque seguro, discos de más de 2TB y uso de ratón en el menú."},
+      {n:29, q:"Factor de forma ATX define:", A:"Tamaño de la placa, ubicación de tornillos y fuente.", B:"Velocidad del CPU.", C:"Tipo de memoria.", D:"Sistema operativo.", ans:"A", why:"Es un estándar industrial para asegurar compatibilidad entre gabinetes y placas."},
+      {n:30, q:"PCI Express (PCIe) es:", A:"Un bus serial punto a punto de alta velocidad.", B:"Un bus paralelo compartido.", C:"Un cable de red.", D:"Un conector de audio.", ans:"A", why:"Reemplazó al PCI clásico ofreciendo ancho de banda dedicado por dispositivo."},
+      {n:31, q:"¿Qué significa PCIe x16?", A:"Que tiene 16 carriles (lanes) de datos.", B:"Que es versión 16.", C:"Que tiene 16 pines.", D:"Que soporta 16 GB.", ans:"A", why:"Se usa típicamente para tarjetas gráficas para maximizar el flujo de datos."},
+      {n:32, q:"Un 'Lane' PCIe consta de:", A:"4 cables (par de envío + par de recepción).", B:"1 cable único.", C:"32 cables.", D:"8 cables.", ans:"A", why:"Es full-duplex, puede enviar y recibir simultáneamente."},
+      {n:33, q:"SATA se utiliza para:", A:"Conectar dispositivos de almacenamiento (HDD, SSD, DVD).", B:"Conectar tarjetas gráficas.", C:"Conectar memoria RAM.", D:"Conectar internet.", ans:"A", why:"Serial ATA es el estándar doméstico para discos."},
+      {n:34, q:"Velocidad teórica de SATA III:", A:"6 Gbps (aprox 600 MB/s).", B:"1 Gbps.", C:"100 Mbps.", D:"20 Gbps.", ans:"A", why:"Es el límite práctico de la interfaz SATA; los SSDs modernos usan NVMe para superarlo."},
+      {n:35, q:"Socket PGA (Pin Grid Array):", A:"Pines en el CPU, agujeros en el socket.", B:"Pines en el socket.", C:"Bolas de soldadura.", D:"Contactos planos.", ans:"A", why:"Común en CPUs AMD antiguos (AM4). Requiere cuidado de no doblar pines del chip."},
+      {n:36, q:"Socket LGA (Land Grid Array):", A:"Pines en la placa (socket), contactos planos en el CPU.", B:"Pines en el CPU.", C:"Soldado a la placa.", D:"Magnético.", ans:"A", why:"Común en Intel y AMD AM5. Protege al CPU pero hace la placa más delicada."},
+      {n:37, q:"Socket BGA (Ball Grid Array):", A:"El CPU va soldado a la placa mediante bolas de estaño.", B:"Pines removibles.", C:"Zócalo de palanca.", D:"Cartucho.", ans:"A", why:"Se usa en laptops y móviles para ahorrar espacio; no es actualizable."},
+      {n:38, q:"El VRM (Voltage Regulator Module) sirve para:", A:"Suministrar voltaje estable y exacto al CPU.", B:"Dar video.", C:"Controlar el audio.", D:"Conectar USB.", ans:"A", why:"Convierte los 12V de la fuente a los ~1.2V que necesita el procesador."},
+      {n:39, q:"Conector EPS 12V (4+4 pines):", A:"Alimenta exclusivamente al CPU.", B:"Alimenta la tarjeta gráfica.", C:"Alimenta los discos.", D:"Alimenta el ventilador.", ans:"A", why:"Es distinto al PCIe; provee la potencia necesaria para el procesador."},
+      {n:40, q:"Conector ATX 24 pines:", A:"Alimenta la placa madre principal.", B:"Alimenta solo el disco duro.", C:"Es para el monitor.", D:"Es para el mouse.", ans:"A", why:"Es el cable más grande de la fuente, da energía a los buses y chips de la placa."},
+      {n:41, q:"¿Qué es el Overclocking?", A:"Aumentar la frecuencia de reloj por encima de fábrica.", B:"Poner un reloj en la pantalla.", C:"Bajar la velocidad para ahorrar energía.", D:"Apagar núcleos.", ans:"A", why:"Mejora rendimiento pero aumenta calor y consumo."},
+      {n:42, q:"¿Qué es Thermal Throttling?", A:"Reducción automática de velocidad por exceso de calor.", B:"Un virus.", C:"Un tipo de pasta térmica.", D:"Acelerar el ventilador.", ans:"A", why:"Es un mecanismo de defensa para evitar que el CPU se queme."},
+      {n:43, q:"¿Qué es TDP (Thermal Design Power)?", A:"Calor máximo en Watts que el disipador debe poder evacuar.", B:"Consumo eléctrico exacto.", C:"Velocidad del procesador.", D:"Temperatura máxima.", ans:"A", why:"Guía para elegir el sistema de refrigeración adecuado."},
+      {n:44, q:"Thunderbolt combina:", A:"PCIe y DisplayPort en un solo cable.", B:"USB y Audio.", C:"VGA y DVI.", D:"SATA y IDE.", ans:"A", why:"Permite velocidades extremas (40Gbps) y video en un mismo puerto."},
+      {n:45, q:"USB-C es:", A:"Un tipo de conector físico reversible.", B:"Un protocolo de velocidad.", C:"Una marca.", D:"Un cable de red.", ans:"A", why:"No define velocidad; un puerto USB-C puede ser lento (2.0) o rápido (Thunderbolt), depende del controlador."},
+      {n:46, q:"Power Delivery (PD) permite:", A:"Negociar voltajes altos para cargar laptops por USB.", B:"Entregar paquetes.", C:"Ahorrar batería.", D:"Apagar la pantalla.", ans:"A", why:"Soporta hasta 100W o 240W en versiones nuevas."},
+      {n:47, q:"¿Qué es un Bus Multiplexado?", A:"Usa las mismas líneas para datos y direcciones en distintos tiempos.", B:"Muchos cables a la vez.", C:"Un bus muy rápido.", D:"Un bus óptico.", ans:"A", why:"Ahorra pines físicos pero complica el control."},
+      {n:48, q:"Señal de control 'Ready/Wait':", A:"Sincroniza al CPU con dispositivos lentos.", B:"Apaga el equipo.", C:"Inicia el sistema.", D:"Muestra la hora.", ans:"A", why:"El CPU espera ciclos extra si el periférico no está listo."},
+      {n:49, q:"Señal de control 'Interrupt Request' (INTR):", A:"El periférico solicita atención del CPU.", B:"El CPU regaña al periférico.", C:"Error de lectura.", D:"Reinicio.", ans:"A", why:"Es la 'mano levantada' del hardware para pedir servicio."},
+      {n:50, q:"Señal de control 'Bus Request/Grant':", A:"Negociación para usar el bus (ej. DMA).", B:"Pedir permiso para apagarse.", C:"Pedir contraseña.", D:"Pedir internet.", ans:"A", why:"Evita colisiones si varios dispositivos quieren usar el bus a la vez."},
+      {n:51, q:"DRAM (Dinámica) se caracteriza por:", A:"Usar capacitores que requieren refresco constante.", B:"Ser muy rápida y cara.", C:"No necesitar energía.", D:"Usar flip-flops.", ans:"A", why:"Es más lenta que SRAM pero mucho más barata y densa, ideal para memoria principal."},
+      {n:52, q:"SRAM (Estática) se caracteriza por:", A:"Usar transistores (flip-flops), es rápida y no requiere refresco.", B:"Ser lenta y barata.", C:"Perder datos al leer.", D:"Usar capacitores.", ans:"A", why:"Se usa en Caché (L1/L2) por su velocidad, aunque ocupa mucho espacio."},
+      {n:53, q:"ROM (Read Only Memory) es:", A:"No volátil, retiene datos sin energía.", B:"Volátil, se borra al apagar.", C:"Muy rápida.", D:"Para guardar juegos.", ans:"A", why:"Almacena firmware vital como la BIOS."},
+      {n:54, q:"Memoria Volátil significa:", A:"Pierde los datos si se corta la energía.", B:"Explota si se calienta.", C:"Nunca pierde datos.", D:"Es muy rápida.", ans:"A", why:"La RAM es volátil; el disco duro es no volátil."},
+      {n:55, q:"DDR (Double Data Rate) transmite:", A:"Dos veces por ciclo de reloj (subida y bajada).", B:"Dos bits a la vez.", C:"En dos canales.", D:"Al doble de voltaje.", ans:"A", why:"Duplica el ancho de banda efectivo sin subir la frecuencia base."},
+      {n:56, q:"Dual Channel:", A:"Usa dos módulos para duplicar el ancho de banda (128 bits).", B:"Usa dos CPUs.", C:"Usa dos discos.", D:"Conecta dos redes.", ans:"A", why:"Accede a dos peines de RAM simultáneamente."},
+      {n:57, q:"Latencia CAS (CL):", A:"Ciclos de espera entre pedir un dato y recibirlo.", B:"Capacidad de memoria.", C:"Velocidad en MHz.", D:"Voltaje.", ans:"A", why:"Menor latencia es mejor. CL16 es más rápido que CL18 a igual frecuencia."},
+      {n:58, q:"ECC (Error Correction Code):", A:"Memoria capaz de detectar y corregir errores de bit.", B:"Memoria más barata.", C:"Memoria para juegos.", D:"Memoria muy rápida.", ans:"A", why:"Crítica en servidores para evitar corrupción de datos."},
+      {n:59, q:"DIMM vs SO-DIMM:", A:"DIMM es para escritorio, SO-DIMM para laptops.", B:"DIMM es antiguo, SO-DIMM nuevo.", C:"Son iguales.", D:"SO-DIMM es para servidores.", ans:"A", why:"Diferencia física de tamaño y pines."},
+      {n:60, q:"SPD (Serial Presence Detect):", A:"Chip en la RAM que informa a la BIOS sus especificaciones.", B:"Detector de velocidad.", C:"Sensor de temperatura.", D:"Puerto de servicio.", ans:"A", why:"Permite que la placa configure automáticamente la frecuencia y latencia."},
+      {n:61, q:"XMP / EXPO:", A:"Perfiles de overclock automático para la RAM.", B:"Marca de memoria.", C:"Formato de video.", D:"Protocolo de red.", ans:"A", why:"Permite a la RAM funcionar a su velocidad anunciada superior al estándar JEDEC."},
+      {n:62, q:"Jerarquía de Memoria (orden velocidad):", A:"Registros > Caché > RAM > SSD > HDD.", B:"HDD > RAM > Caché.", C:"RAM > SSD > Registros.", D:"SSD > Caché > RAM.", ans:"A", why:"Los registros están en el CPU (inmediato); el HDD es mecánico (lento)."},
+      {n:63, q:"Memoria Virtual:", A:"Usa espacio en disco como si fuera RAM.", B:"Es RAM descargada de internet.", C:"Es una ilusión óptica.", D:"Es memoria de video.", ans:"A", why:"Permite correr programas grandes aunque falte RAM física, paginando al disco."},
+      {n:64, q:"Archivo de Paginación (Swap):", A:"El archivo en disco donde se guarda la memoria virtual.", B:"Un virus.", C:"El driver de video.", D:"La BIOS.", ans:"A", why:"Si la RAM se llena, el SO mueve datos aquí."},
+      {n:65, q:"SSD vs HDD:", A:"SSD usa chips flash (rápido); HDD usa platos magnéticos (lento).", B:"HDD es más rápido.", C:"Son iguales.", D:"SSD es mecánico.", ans:"A", why:"El SSD no tiene partes móviles, el acceso es casi instantáneo."},
+      {n:66, q:"NVMe:", A:"Protocolo optimizado para SSDs sobre PCIe.", B:"Tipo de memoria RAM.", C:"Conector de video.", D:"Marca de disco.", ans:"A", why:"Supera las limitaciones de velocidad del antiguo protocolo AHCI/SATA."},
+      {n:67, q:"Formato M.2:", A:"Factor de forma compacto para SSDs (se conecta directo a placa).", B:"Un cable.", C:"Un procesador.", D:"Un tipo de USB.", ans:"A", why:"Elimina cables de datos y alimentación."},
+      {n:68, q:"RAID 0 (Striping):", A:"Suma velocidad y capacidad, pero si falla uno se pierde todo.", B:"Copia espejo.", C:"Respaldo seguro.", D:"Menos capacidad.", ans:"A", why:"Divide los datos entre discos para leer/escribir más rápido."},
+      {n:69, q:"RAID 1 (Mirroring):", A:"Crea una copia exacta (espejo) para seguridad.", B:"Suma velocidad.", C:"Suma capacidad.", D:"Es inseguro.", ans:"A", why:"Si un disco muere, el otro sigue funcionando."},
+      {n:70, q:"RAID 5:", A:"Usa paridad distribuida, tolera fallo de 1 disco.", B:"Requiere 2 discos.", C:"Es para velocidad pura.", D:"No tiene tolerancia a fallos.", ans:"A", why:"Balance entre velocidad, capacidad y seguridad."},
+      {n:71, q:"Celdas SLC (Single Level Cell):", A:"1 bit por celda, máxima durabilidad y velocidad.", B:"4 bits por celda.", C:"Lentas y baratas.", D:"Poca vida útil.", ans:"A", why:"Las más caras y fiables, usadas en servidores."},
+      {n:72, q:"Celdas QLC (Quad Level Cell):", A:"4 bits por celda, menor durabilidad, más baratas.", B:"1 bit por celda.", C:"Máxima velocidad.", D:"Infinitas escrituras.", ans:"A", why:"Comunes en SSDs de consumo masivo y alta capacidad."},
+      {n:73, q:"TBW (Terabytes Written):", A:"Vida útil estimada de un SSD en cantidad de escritura.", B:"Velocidad de lectura.", C:"Capacidad total.", D:"Temperatura máxima.", ans:"A", why:"Los SSDs se desgastan al escribir; este dato dice cuánto aguantan."},
+      {n:74, q:"Fragmentación en HDD:", A:"Datos dispersos físicamente, ralentiza la lectura.", B:"Mejora la velocidad.", C:"Ahorra espacio.", D:"No existe.", ans:"A", why:"El cabezal debe moverse más. En SSD no afecta tanto."},
+      {n:75, q:"TRIM en SSD:", A:"Comando para informar qué bloques están libres y mantener velocidad.", B:"Recortar cables.", C:"Formatear virus.", D:"Bajar brillo.", ans:"A", why:"Evita que el rendimiento del SSD caiga con el tiempo."},
+      {n:76, q:"Hot-Swap:", A:"Conectar/desconectar discos sin apagar el equipo.", B:"Calentar el disco.", C:"Cambiar de usuario.", D:"Reiniciar rápido.", ans:"A", why:"Vital en servidores para mantenimiento continuo."},
+      {n:77, q:"SAS (Serial Attached SCSI):", A:"Interfaz profesional para servidores, más fiable que SATA.", B:"Interfaz para mouse.", C:"Sistema de audio.", D:"Software de diseño.", ans:"A", why:"Soporta mayores cargas de trabajo y cables más largos."},
+      {n:78, q:"LBA (Logical Block Addressing):", A:"Método para direccionar sectores del disco linealmente.", B:"Un tipo de virus.", C:"Marca de disco.", D:"Formato de video.", ans:"A", why:"Reemplazó al viejo CHS (Cilindro-Cabeza-Sector)."},
+      {n:79, q:"GPT vs MBR:", A:"GPT soporta discos >2TB y más particiones; MBR es legado.", B:"MBR es mejor.", C:"Son iguales.", D:"GPT es para disquetes.", ans:"A", why:"GPT es el estándar moderno asociado a UEFI."},
+      {n:80, q:"Bit de Paridad:", A:"Bit extra para detectar errores simples.", B:"Bit de inicio.", C:"Bit de parada.", D:"Dato de usuario.", ans:"A", why:"Si cambia un bit accidentalmente, la paridad no coincide."},
+      {n:81, q:"E/S Programada (Polling):", A:"El CPU pregunta constantemente al dispositivo si terminó.", B:"El dispositivo avisa.", C:"Es muy eficiente.", D:"Usa interrupciones.", ans:"A", why:"Desperdicia ciclos de CPU en espera activa."},
+      {n:82, q:"E/S por Interrupciones:", A:"El dispositivo avisa al CPU cuando está listo.", B:"El CPU espera sentado.", C:"No usa CPU.", D:"Es manual.", ans:"A", why:"El CPU puede hacer otra cosa mientras el dispositivo trabaja."},
+      {n:83, q:"Resolución de pantalla:", A:"Número de píxeles (Ancho x Alto).", B:"Pulgadas del monitor.", C:"Brillo.", D:"Colores.", ans:"A", why:"Define la nitidez y cantidad de información visible."},
+      {n:84, q:"Tasa de Refresco (Hz):", A:"Imágenes por segundo que dibuja el monitor.", B:"Resolución.", C:"Velocidad del cable.", D:"Consumo.", ans:"A", why:"Más Hz = movimiento más fluido (ej. 144Hz vs 60Hz)."},
+      {n:85, q:"Profundidad de color (bits):", A:"Cantidad de bits por píxel (colores posibles).", B:"Tamaño del píxel.", C:"Brillo máximo.", D:"Contraste.", ans:"A", why:"8 bits = 16.7 millones de colores; 10 bits = 1000 millones."},
+      {n:86, q:"GPU (Unidad de Procesamiento Gráfico):", A:"Procesador especializado en cálculos paralelos (píxeles/polígonos).", B:"Memoria RAM.", C:"Disco duro.", D:"Fuente de poder.", ans:"A", why:"Libera al CPU de la carga de renderizar gráficos."},
+      {n:87, q:"VRAM:", A:"Memoria dedicada de la tarjeta de video.", B:"Memoria del sistema.", C:"Memoria virtual.", D:"Memoria ROM.", ans:"A", why:"Almacena texturas y framebuffers para acceso rápido de la GPU."},
+      {n:88, q:"HDMI:", A:"Transmite video y audio digital.", B:"Solo video.", C:"Solo audio.", D:"Es analógico.", ans:"A", why:"Estándar multimedia para TVs y monitores."},
+      {n:89, q:"DisplayPort:", A:"Estándar de video orientado a PC, soporta daisy-chain.", B:"Es de baja calidad.", C:"Solo audio.", D:"Es igual a VGA.", ans:"A", why:"Suele tener mayor ancho de banda que HDMI equivalente."},
+      {n:90, q:"VGA:", A:"Estándar analógico antiguo (conector azul).", B:"Digital moderno.", C:"Alta definición.", D:"Audio y video.", ans:"A", why:"Obsoleto, susceptible a interferencias."},
+      {n:91, q:"DVI:", A:"Transición entre analógico y digital (conector blanco).", B:"Solo analógico.", C:"Solo audio.", D:"Inalámbrico.", ans:"A", why:"DVI-D es digital, DVI-A analógico, DVI-I ambos."},
+      {n:92, q:"Drivers (Controladores):", A:"Software que enseña al SO cómo hablar con el hardware.", B:"El chofer del PC.", C:"Un juego.", D:"Hardware físico.", ans:"A", why:"Sin drivers, el sistema operativo no sabe usar la tarjeta."},
+      {n:93, q:"Teclado mecánico vs membrana:", A:"Mecánico usa interruptores físicos individuales; membrana usa lámina.", B:"Son iguales.", C:"Membrana hace clic.", D:"Mecánico es táctil.", ans:"A", why:"Mecánico ofrece mejor feedback y durabilidad."},
+      {n:94, q:"DPI en mouse:", A:"Puntos por pulgada (sensibilidad).", B:"Botones.", C:"Luces.", D:"Peso.", ans:"A", why:"Más DPI = el cursor se mueve más con menos movimiento físico."},
+      {n:95, q:"Ghosting en teclados:", A:"No registrar teclas cuando se presionan muchas a la vez.", B:"Teclas que se pulsan solas.", C:"Teclado transparente.", D:"Teclas borrosas.", ans:"A", why:"Teclados gamer usan N-Key Rollover para evitarlo."},
+      {n:96, q:"Impresora Láser:", A:"Usa tóner y electricidad estática.", B:"Usa tinta líquida.", C:"Usa agujas.", D:"Quema el papel.", ans:"A", why:"Rápida y económica para mucho texto."},
+      {n:97, q:"Impresora Inyección de Tinta:", A:"Rocía gotas microscópicas de tinta.", B:"Usa polvo.", C:"Golpea el papel.", D:"Es de calor.", ans:"A", why:"Mejor para fotos y color, más cara por página."},
+      {n:98, q:"Escáner - OCR:", A:"Reconocimiento Óptico de Caracteres (imagen a texto).", B:"Escanear fotos.", C:"Imprimir.", D:"Copiar.", ans:"A", why:"Convierte una foto de un documento en texto editable."},
+      {n:99, q:"Códec:", A:"Codificador/Decodificador (comprime/descomprime media).", B:"Un reproductor.", C:"Un cable.", D:"Una pantalla.", ans:"A", why:"Necesario para ver videos o escuchar música comprimida."},
+      {n:100, q:"MIDI:", A:"Protocolo de comunicación para instrumentos musicales.", B:"Formato de audio real.", C:"Un micrófono.", D:"Un parlante.", ans:"A", why:"Transmite notas y parámetros, no sonido grabado."},
+      {n:101, q:"Puerto Serial (RS-232):", A:"Envía bits uno tras otro, antiguo y lento.", B:"Muy rápido.", C:"Paralelo.", D:"De video.", ans:"A", why:"Usado históricamente para módems y ratones, hoy en industria."},
+      {n:102, q:"Puerto Paralelo (LPT):", A:"Envía varios bits simultáneamente, usado en impresoras viejas.", B:"Serial.", C:"De red.", D:"De audio.", ans:"A", why:"Reemplazado por USB."},
+      {n:103, q:"RJ-45:", A:"Conector estándar para red Ethernet.", B:"Conector telefónico.", C:"Conector de video.", D:"Conector de audio.", ans:"A", why:"Tiene 8 pines para pares trenzados."},
+      {n:104, q:"Bluetooth:", A:"Protocolo inalámbrico de corto alcance (PAN).", B:"Internet global.", C:"Cable azul.", D:"Satélite.", ans:"A", why:"Para conectar periféricos sin cables."},
+      {n:105, q:"Wi-Fi 6 (802.11ax):", A:"Estándar moderno para redes inalámbricas de alta eficiencia.", B:"Red celular.", C:"Cable de red.", D:"Radio FM.", ans:"A", why:"Mejora el rendimiento en zonas congestionadas."},
+      {n:106, q:"Dirección MAC:", A:"Identificador físico único de la tarjeta de red.", B:"Dirección IP.", C:"Nombre de usuario.", D:"Marca de PC.", ans:"A", why:"Grabada en hardware, identifica al dispositivo en la capa 2."},
+      {n:107, q:"Dirección IP:", A:"Identificador lógico en la red.", B:"Identificador físico.", C:"Modelo de CPU.", D:"Código postal.", ans:"A", why:"Necesaria para enrutar paquetes en internet."},
+      {n:108, q:"Fuente Modular:", A:"Cables desmontables para usar solo los necesarios.", B:"Cables fijos.", C:"Sin cables.", D:"Fuente externa.", ans:"A", why:"Mejora el flujo de aire y la estética."},
+      {n:109, q:"Certificación 80 Plus:", A:"Indica la eficiencia energética de la fuente.", B:"Indica la potencia máxima.", C:"Indica la calidad del ventilador.", D:"Indica garantía de 80 años.", ans:"A", why:"Asegura que desperdicia menos energía en forma de calor."},
+      {n:110, q:"Protección OVP (Over Voltage):", A:"Apaga la fuente si el voltaje sube peligrosamente.", B:"Sube el voltaje.", C:"Protege de virus.", D:"Protege del polvo.", ans:"A", why:"Salva a los componentes de quemarse."},
+      {n:111, q:"¿Cuál es la función del bus de control?", A:"Transmitir señales de mando y temporización (Read, Write, Reset).", B:"Llevar datos.", C:"Llevar direcciones.", D:"Alimentar energía.", ans:"A", why:"Coordina el tráfico para que datos y direcciones no colisionen."},
+      {n:112, q:"Si el bus de datos es de 32 bits y el de direcciones de 32 bits, ¿cuánta RAM puedo direccionar?", A:"4 GB.", B:"32 GB.", C:"2 GB.", D:"8 GB.", ans:"A", why:"2^32 bytes = 4.294.967.296 bytes = 4 GB."},
+      {n:113, q:"¿Qué es el 'Word Size' (Tamaño de Palabra)?", A:"Cantidad de bits que el CPU procesa en una sola instrucción.", B:"Tamaño del monitor.", C:"Largo del cable.", D:"Capacidad del disco.", ans:"A", why:"En un CPU de 64 bits, la palabra es de 64 bits."},
+      {n:114, q:"Arquitectura Von Neumann:", A:"Instrucciones y datos comparten la misma memoria y bus.", B:"Memorias separadas para datos e instrucciones.", C:"Sin memoria.", D:"Solo para calculadoras.", ans:"A", why:"Crea el 'cuello de botella Von Neumann' al no poder buscar instrucción y dato a la vez."},
+      {n:115, q:"Arquitectura Harvard:", A:"Memorias y buses físicamente separados para instrucciones y datos.", B:"Memoria unificada.", C:"Sin CPU.", D:"Solo software.", ans:"A", why:"Permite acceso simultáneo, usada en cachés L1 y DSPs."},
+      {n:116, q:"Little Endian vs Big Endian:", A:"Orden en que se guardan los bytes (el menos significativo primero o el más significativo).", B:"Tamaño del archivo.", C:"Tipo de letra.", D:"Velocidad del bus.", ans:"A", why:"Cuestión de convención de diseño (Intel es Little Endian)."},
+      {n:117, q:"¿Qué es un 'OpCode'?", A:"La parte de la instrucción que dice QUÉ hacer (ej. SUMAR).", B:"El dato.", C:"La dirección.", D:"El resultado.", ans:"A", why:"Es el verbo de la oración en lenguaje máquina."},
+      {n:118, q:"¿Qué es un Operando?", A:"El dato sobre el que se opera o su dirección.", B:"La operación.", C:"El reloj.", D:"El usuario.", ans:"A", why:"Es el objeto de la oración (ej. en 'SUMAR 5', 5 es operando)."},
+      {n:119, q:"Instrucción de Salto (JUMP):", A:"Rompe la secuencia lineal y cambia el PC a otra dirección.", B:"Salta una línea.", C:"Apaga el PC.", D:"Borra datos.", ans:"A", why:"Permite bucles (loops) y condiciones (if/else)."},
+      {n:120, q:"¿Qué pasa al apagar una PC con Hibernación?", A:"Se vuelca la RAM al disco duro y se apaga totalmente.", B:"Queda en bajo consumo.", C:"Se pierden los datos.", D:"Se reinicia.", ans:"A", why:"Al encender, restaura la sesión tal cual estaba."},
+      {n:121, q:"Suspensión (Sleep) vs Hibernación:", A:"Suspensión mantiene RAM encendida (gasta poco); Hibernación apaga todo (gasta 0).", B:"Son iguales.", C:"Suspensión apaga todo.", D:"Hibernación gasta batería.", ans:"A", why:"Suspensión vuelve más rápido, Hibernación es más segura si falta energía."},
+      {n:122, q:"¿Por qué se usan transistores en el CPU?", A:"Actúan como interruptores controlados electrónicamente (0 y 1).", B:"Generan luz.", C:"Son baratos.", D:"Hacen ruido.", ans:"A", why:"Son la base física de la lógica binaria."},
+      {n:123, q:"Ley de Amdahl:", A:"La mejora de rendimiento está limitada por la parte que no se puede mejorar.", B:"Todo mejora infinito.", C:"Más núcleos siempre es lineal.", D:"El software es lento.", ans:"A", why:"Explica por qué 100 núcleos no hacen que todo sea 100 veces más rápido."},
+      {n:124, q:"FLOPS:", A:"Operaciones de Coma Flotante por Segundo.", B:"Errores por segundo.", C:"Saltos por segundo.", D:"Archivos por segundo.", ans:"A", why:"Medida estándar de rendimiento en supercomputadoras y GPUs."},
+      {n:125, q:"MIPS:", A:"Millones de Instrucciones por Segundo.", B:"Mapas por segundo.", C:"Memoria por segundo.", D:"Modelo de CPU.", ans:"A", why:"Medida antigua de velocidad bruta del procesador."},
+      {n:126, q:"¿Qué es Firmware Update?", A:"Actualizar el código bajo nivel de un componente (BIOS, SSD).", B:"Actualizar Windows.", C:"Cambiar el hardware.", D:"Limpiar el polvo.", ans:"A", why:"Corrige errores o mejora compatibilidad del hardware."},
+      {n:127, q:"¿Riesgo de actualizar BIOS?", A:"Si se va la luz, la placa puede quedar inutilizable (bricked).", B:"Se borra el disco.", C:"Se quema el monitor.", D:"Se borra Windows.", ans:"A", why:"La BIOS es necesaria para arrancar; si está corrupta, no arranca."},
+      {n:128, q:"CMOS Checksum Error:", A:"Los datos de configuración no coinciden (pila agotada o corrupción).", B:"Error de disco.", C:"Error de video.", D:"Virus.", ans:"A", why:"Suele indicar que la batería CR2032 murió."},
+      {n:129, q:"Pitidos al arrancar (Beep Codes):", A:"Código de error de la BIOS cuando no hay video.", B:"Música de inicio.", C:"Aviso de virus.", D:"Teclado desconectado.", ans:"A", why:"Ayuda a diagnosticar fallos de hardware ciegos."},
+      {n:130, q:"¿Qué es un Benchmark?", A:"Prueba estandarizada para medir rendimiento.", B:"Una marca de banco.", C:"Un juego.", D:"Un virus.", ans:"A", why:"Permite comparar objetivamente diferentes equipos."},
+      {n:131, q:"Cuello de Botella (Bottleneck):", A:"El componente más lento frena al resto del sistema.", B:"El cable está doblado.", C:"Falta ventilación.", D:"Software mal hecho.", ans:"A", why:"Ej. Un CPU potente con un disco duro lento."},
+      {n:132, q:"¿Qué es la Latencia?", A:"Tiempo de respuesta o retardo.", B:"Velocidad máxima.", C:"Ancho de banda.", D:"Distancia.", ans:"A", why:"En juegos es el 'ping'; en RAM es el tiempo de acceso."},
+      {n:133, q:"Ancho de Banda:", A:"Volumen de datos por segundo.", B:"Retraso.", C:"Ancho del monitor.", D:"Frecuencia.", ans:"A", why:"Es como el diámetro de una tubería."},
+      {n:134, q:"SoC (System on Chip):", A:"CPU, GPU y otros módulos en un solo chip (Móviles/Apple Silicon).", B:"Solo CPU.", C:"Placa madre.", D:"Memoria externa.", ans:"A", why:"Alta integración reduce consumo y tamaño."},
+      {n:135, q:"Procesador ARM:", A:"Arquitectura RISC, eficiente, domina móviles.", B:"Arquitectura CISC, domina PC.", C:"Muy caliente.", D:"Solo para servidores.", ans:"A", why:"Prioriza eficiencia energética sobre fuerza bruta."},
+      {n:136, q:"Procesador x86/x64:", A:"Arquitectura CISC dominante en PC/Laptops (Intel/AMD).", B:"Arquitectura móvil.", C:"Solo 32 bits.", D:"Obsoleto.", ans:"A", why:"Mantiene retrocompatibilidad de décadas."},
+      {n:137, q:"Hyper-Threading / SMT:", A:"Un núcleo físico simula dos lógicos.", B:"Dos núcleos físicos.", C:"Doble velocidad.", D:"Doble memoria.", ans:"A", why:"Aprovecha los tiempos muertos del núcleo."},
+      {n:138, q:"Multinúcleo (Multicore):", A:"Varios CPUs físicos en el mismo paquete.", B:"Varios PCs.", C:"Virtualización.", D:"Simulación.", ans:"A", why:"Verdadero paralelismo físico."},
+      {n:139, q:"Virtualización por Hardware (VT-x / AMD-V):", A:"Extensiones del CPU para correr máquinas virtuales eficientemente.", B:"Juegos VR.", C:"Simulador.", D:"Emulador lento.", ans:"A", why:"Permite al software de virtualización acceso directo al hardware."},
+      {n:140, q:"TPM (Trusted Platform Module):", A:"Chip de seguridad criptográfica (claves, BitLocker).", B:"Módulo de potencia.", C:"Chip de temperatura.", D:"Memoria temporal.", ans:"A", why:"Requisito de Windows 11 para seguridad."},
+      {n:141, q:"BitLocker:", A:"Cifrado de disco completo de Windows.", B:"Un virus.", C:"Un juego.", D:"Un candado físico.", ans:"A", why:"Protege los datos si roban el disco."},
+      {n:142, q:"¿Qué es un Pixel Muerto?", A:"Un píxel que no enciende (punto negro).", B:"Un píxel trabado en color.", C:"Un virus de pantalla.", D:"Suciedad.", ans:"A", why:"Defecto de fabricación del panel LCD/OLED."},
+      {n:143, q:"Pantalla OLED:", A:"Cada píxel emite su propia luz (negros puros).", B:"Usa luz trasera.", C:"Es blanco y negro.", D:"Es CRT.", ans:"A", why:"Contraste infinito, pero riesgo de quemado (burn-in)."},
+      {n:144, q:"Pantalla IPS:", A:"Mejores colores y ángulos de visión que TN.", B:"Más rápida que TN.", C:"Peores colores.", D:"Blanco y negro.", ans:"A", why:"Estándar en monitores de diseño."},
+      {n:145, q:"Panel TN:", A:"Muy rápido (1ms) pero peores colores y ángulos.", B:"Mejores colores.", C:"Lento.", D:"Para cine.", ans:"A", why:"Usado en e-sports competitivos."},
+      {n:146, q:"Frecuencia Adaptativa (G-Sync / FreeSync):", A:"Sincroniza los Hz del monitor con los FPS de la GPU.", B:"Sube los FPS.", C:"Mejora el color.", D:"Baja el brillo.", ans:"A", why:"Elimina el 'tearing' (cortes) y el 'stuttering' (tartamudeo)."},
+      {n:147, q:"¿Qué es el Tearing?", A:"Desgarro de imagen cuando GPU y Monitor van desfasados.", B:"Llorar.", C:"Pantalla negra.", D:"Colores invertidos.", ans:"A", why:"Se ve como una línea horizontal que rompe la imagen."},
+      {n:148, q:"Resolución 4K:", A:"Aprox 3840 x 2160 píxeles.", B:"1920 x 1080.", C:"1280 x 720.", D:"800 x 600.", ans:"A", why:"Cuatro veces la cantidad de píxeles de Full HD."},
+      {n:149, q:"Relación de Aspecto 16:9:", A:"Formato panorámico estándar de TV y monitores.", B:"Cuadrado.", C:"Vertical.", D:"Cine ultra ancho.", ans:"A", why:"Por cada 16 unidades de ancho hay 9 de alto."},
+      {n:150, q:"Relación de Aspecto 21:9:", A:"UltraWide, más ancho, mayor inmersión.", B:"Cuadrado antiguo.", C:"Vertical.", D:"Estándar.", ans:"A", why:"Ideal para multitarea y cine."},
+      {n:151, q:"Modo de Direccionamiento Inmediato:", A:"El dato está en la propia instrucción.", B:"El dato está en RAM.", C:"El dato está en registro.", D:"Es indirecto.", ans:"A", why:"Ej. ADD 5 (No hay que buscar el 5 en ningún lado, ya lo tengo)."},
+      {n:152, q:"Modo de Direccionamiento Directo:", A:"La instrucción contiene la dirección de memoria del dato.", B:"Contiene el dato.", C:"Apunta a registro.", D:"Es implícito.", ans:"A", why:"Ej. LOAD [1000]. El CPU va a la casilla 1000."},
+      {n:153, q:"Modo de Direccionamiento Indirecto:", A:"Apunta a una dirección que contiene OTRA dirección.", B:"Es directo.", C:"Es inmediato.", D:"No existe.", ans:"A", why:"Útil para punteros, pero lento (doble acceso a memoria)."},
+      {n:154, q:"Modo de Direccionamiento por Registro:", A:"El dato está en un registro interno del CPU.", B:"En RAM.", C:"En disco.", D:"En caché.", ans:"A", why:"El más rápido, sin acceso al bus externo."},
+      {n:155, q:"Compuerta AND:", A:"Salida 1 solo si TODAS las entradas son 1.", B:"Si alguna es 1.", C:"Invierte.", D:"Siempre 0.", ans:"A", why:"Lógica de multiplicación (1x1=1, 1x0=0)."},
+      {n:156, q:"Compuerta OR:", A:"Salida 1 si AL MENOS UNA entrada es 1.", B:"Solo si todas son 1.", C:"Invierte.", D:"Siempre 0.", ans:"A", why:"Lógica de suma (1+0=1)."},
+      {n:157, q:"Compuerta NOT:", A:"Invierte la entrada (1->0, 0->1).", B:"Suma.", C:"Multiplica.", D:"No hace nada.", ans:"A", why:"Operación de negación."},
+      {n:158, q:"Compuerta XOR:", A:"Salida 1 si las entradas son DIFERENTES.", B:"Si son iguales.", C:"Siempre 1.", D:"Siempre 0.", ans:"A", why:"O exclusivo. Base de la suma binaria."},
+      {n:159, q:"Flip-Flop:", A:"Circuito capaz de almacenar 1 bit (memoria).", B:"Puerta lógica.", C:"Cable.", D:"Error.", ans:"A", why:"Elemento básico de memoria secuencial."},
+      {n:160, q:"Multiplexor (MUX):", A:"Selecciona una entrada de muchas y la pone en la salida.", B:"Reparte una entrada a muchas.", C:"Suma.", D:"Resta.", ans:"A", why:"Como un switch selector de vías."},
+      {n:161, q:"Pipelining (Segmentación):", A:"Ejecutar múltiples instrucciones solapadas en fases.", B:"Ejecutar una por una.", C:"Usar tuberías de agua.", D:"Apagar núcleos.", ans:"A", why:"Aumenta el throughput (instrucciones por segundo) como una fábrica en cadena."},
+      {n:162, q:"Hazard de Datos (Riesgo):", A:"Una instrucción necesita un dato que la anterior aun no guarda.", B:"Fallo de luz.", C:"Error de usuario.", D:"Virus.", ans:"A", why:"Obliga a detener el pipeline o usar forwarding."},
+      {n:163, q:"Hazard de Control (Salto):", A:"No se sabe qué instrucción sigue hasta resolver el salto.", B:"Fallo de teclado.", C:"Pantalla azul.", D:"Mouse trabado.", ans:"A", why:"Si el CPU predice mal, debe vaciar el pipeline."},
+      {n:164, q:"Predicción de Saltos (Branch Prediction):", A:"Adivinar el resultado de un salto para no parar el pipeline.", B:"Saltar al azar.", C:"No saltar.", D:"Preguntar al usuario.", ans:"A", why:"Clave en el rendimiento moderno."},
+      {n:165, q:"Arquitectura Superescalar:", A:"Múltiples pipelines en un núcleo para >1 instrucción/ciclo.", B:"Un solo pipeline.", C:"CPU lento.", D:"Sin pipeline.", ans:"A", why:"Paralelismo a nivel de instrucción (ILP)."},
+      {n:166, q:"SISD (Flynn):", A:"Single Instruction Single Data (PC clásico uniprocesador).", B:"Multiprocesador.", C:"GPU.", D:"Cluster.", ans:"A", why:"Modelo secuencial tradicional."},
+      {n:167, q:"SIMD (Flynn):", A:"Single Instruction Multiple Data (Vectores/GPU).", B:"PC clásico.", C:"Servidor web.", D:"Red.", ans:"A", why:"Una orden afecta a muchos datos (ej. subir brillo a todos los píxeles)."},
+      {n:168, q:"MIMD (Flynn):", A:"Multiple Instruction Multiple Data (Multicore/Cluster).", B:"Uniprocesador.", C:"Calculadora.", D:"Tarjeta de sonido.", ans:"A", why:"Cada procesador hace cosas distintas con datos distintos."},
+      {n:169, q:"CISC (Complex Instruction Set):", A:"Muchas instrucciones potentes, hardware complejo (x86).", B:"Pocas instrucciones.", C:"Hardware simple.", D:"Móviles.", ans:"A", why:"Filosofía de Intel/AMD: el hardware hace el trabajo duro."},
+      {n:170, q:"RISC (Reduced Instruction Set):", A:"Instrucciones simples y rápidas, hardware eficiente (ARM).", B:"Instrucciones complejas.", C:"Hardware lento.", D:"PC gamer.", ans:"A", why:"Filosofía móvil/Apple: el compilador hace el trabajo duro."},
+      {n:171, q:"Sistema Binario:", A:"Base 2 (0 y 1).", B:"Base 10.", C:"Base 16.", D:"Base 8.", ans:"A", why:"Lenguaje nativo de los transistores."},
+      {n:172, q:"Hexadecimal:", A:"Base 16, compacta la lectura binaria.", B:"Base 10.", C:"Encriptado.", D:"Texto.", ans:"A", why:"4 bits = 1 dígito hex. Facilita leer direcciones."},
+      {n:173, q:"ASCII:", A:"Estándar de codificación de caracteres (7 bits).", B:"Video.", C:"Audio.", D:"Imagen.", ans:"A", why:"Representa letras como números."},
+      {n:174, q:"Unicode (UTF-8):", A:"Estándar universal para todos los caracteres del mundo.", B:"Solo inglés.", C:"Solo números.", D:"Imágenes.", ans:"A", why:"Reemplazó a ASCII para soportar emojis, chino, etc."},
+      {n:175, q:"Complemento a 2:", A:"Representación de números negativos en binario.", B:"Positivos.", C:"Texto.", D:"Color.", ans:"A", why:"Simplifica la resta en hardware."},
+      {n:176, q:"Coma Flotante (IEEE 754):", A:"Estándar para números reales con decimales.", B:"Enteros.", C:"Texto.", D:"Audio.", ans:"A", why:"Signo, Exponente y Mantisa."},
+      {n:177, q:"ALU de N bits:", A:"Define el tamaño de datos que puede operar de una vez.", B:"Velocidad.", C:"Marca.", D:"Consumo.", ans:"A", why:"Una ALU de 32 bits suma números de 32 bits en un paso."},
+      {n:178, q:"Overflow (Desbordamiento):", A:"El resultado no cabe en los bits disponibles.", B:"Agua en el PC.", C:"Mucha memoria.", D:"Error de disco.", ans:"A", why:"Ej. sumar 127 + 1 en 8 bits con signo."},
+      {n:179, q:"Bandera Zero (Z):", A:"Se activa si el resultado de la operación es cero.", B:"Si es negativo.", C:"Si hay error.", D:"Si es positivo.", ans:"A", why:"Usada para comparaciones (si A-B=0, entonces A=B)."},
+      {n:180, q:"Bandera Sign (S):", A:"Indica si el resultado es negativo.", B:"Positivo.", C:"Cero.", D:"Error.", ans:"A", why:"Copia el bit más significativo."},
+      {n:181, q:"Lenguaje Ensamblador:", A:"Representación legible del código máquina.", B:"Alto nivel.", C:"Binario puro.", D:"Hardware.", ans:"A", why:"Mnemónicos (MOV, ADD) 1 a 1 con CPU."},
+      {n:182, q:"Lenguaje Máquina:", A:"Unos y ceros que entiende el CPU.", B:"Inglés.", C:"Python.", D:"Java.", ans:"A", why:"El único lenguaje real del hardware."},
+      {n:183, q:"Compilador:", A:"Traduce alto nivel a lenguaje máquina completo.", B:"Traduce línea a línea.", C:"Ejecuta.", D:"Edita.", ans:"A", why:"Genera un ejecutable (.exe)."},
+      {n:184, q:"Intérprete:", A:"Traduce y ejecuta línea por línea (Python).", B:"Compila todo.", C:"Guarda.", D:"Borra.", ans:"A", why:"Más lento pero flexible."},
+      {n:185, q:"Kernel del SO:", A:"Núcleo que gestiona hardware y recursos.", B:"La interfaz gráfica.", C:"El navegador.", D:"Un virus.", ans:"A", why:"La parte más importante del sistema operativo."},
+      {n:186, q:"System Call (Llamada al Sistema):", A:"Programa pide servicio al Kernel.", B:"Llamada telefónica.", C:"Error.", D:"Reinicio.", ans:"A", why:"Forma controlada de acceder al hardware."},
+      {n:187, q:"Multitarea Apropiativa:", A:"El SO quita el CPU a un proceso para dárselo a otro.", B:"El proceso decide cuándo soltar.", C:"No hay multitarea.", D:"Solo un programa.", ans:"A", why:"Evita que un programa cuelgue todo el PC."},
+      {n:188, q:"Driver firmado:", A:"Garantiza que el driver es auténtico y no modificado.", B:"Escrito a mano.", C:"Pirata.", D:"Lento.", ans:"A", why:"Seguridad en Windows x64."},
+      {n:189, q:"Plug and Play (PnP):", A:"El sistema configura automáticamente el hardware nuevo.", B:"Conectar y jugar.", C:"Instalar manual.", D:"No funciona.", ans:"A", why:"Acabó con la pesadilla de configurar IRQs manualmente."},
+      {n:190, q:"IRQ (Interrupt Request Line):", A:"Línea física para enviar interrupciones.", B:"Cable de red.", C:"Puerto USB.", D:"Tecla.", ans:"A", why:"Cada dispositivo necesita una vía para llamar al CPU."},
+      {n:191, q:"Conflicto de IRQ:", A:"Dos dispositivos intentan usar la misma línea de interrupción.", B:"Pelea de usuarios.", C:"Error de video.", D:"Virus.", ans:"A", why:"Causaba fallos en PCs antiguos."},
+      {n:192, q:"APIC (Advanced Programmable Interrupt Controller):", A:"Gestiona interrupciones complejas en multicore.", B:"Controlador de disco.", C:"Tarjeta de sonido.", D:"Fuente.", ans:"A", why:"Reemplazó al viejo PIC 8259."},
+      {n:193, q:"Bus Síncrono:", A:"Se guía por el reloj del sistema.", B:"Sin reloj.", C:"Aleatorio.", D:"Lento.", ans:"A", why:"Todo ocurre en los flancos del reloj."},
+      {n:194, q:"Bus Asíncrono:", A:"Usa señales de handshake (apretón de manos) sin reloj global.", B:"Con reloj.", C:"Rápido.", D:"Síncrono.", ans:"A", why:"Más flexible para dispositivos de distintas velocidades."},
+      {n:195, q:"Arbitraje de Bus:", A:"Decidir quién usa el bus cuando varios quieren a la vez.", B:"Juzgar.", C:"Vender.", D:"Comprar.", ans:"A", why:"Centralizado o distribuido."},
+      {n:196, q:"Bus Maestro (Master):", A:"Dispositivo que inicia transacciones (CPU, DMA).", B:"Esclavo.", C:"Memoria.", D:"Cable.", ans:"A", why:"Controla el bus."},
+      {n:197, q:"Bus Esclavo (Slave):", A:"Dispositivo que responde al maestro (Memoria).", B:"Maestro.", C:"CPU.", D:"Usuario.", ans:"A", why:"Solo habla cuando le preguntan."},
+      {n:198, q:"Topología de Bus:", A:"Todos comparten el mismo medio de transmisión.", B:"Anillo.", C:"Estrella.", D:"Malla.", ans:"A", why:"Fácil de expandir, pero saturable."},
+      {n:199, q:"Topología Punto a Punto:", A:"Conexión directa entre dos dispositivos (PCIe).", B:"Bus compartido.", C:"Redonda.", D:"Cuadrada.", ans:"A", why:"Mayor ancho de banda, más cables."},
+      {n:200, q:"Frecuencia vs Ancho de Banda:", A:"Ancho de banda = Frecuencia x Ancho del bus.", B:"Son lo mismo.", C:"No se relacionan.", D:"Resta.", ans:"A", why:"Puedes mejorar velocidad subiendo Hz o ensanchando el bus."}
+    ];
+
+    let QUESTIONS = [];
+    let currentLimit = 0;
+    let practiceMode = true;
+
+    const setupScreen = document.getElementById("setupScreen");
+    const quizScreen = document.getElementById("quizScreen");
+    const quizEl = document.getElementById("quiz");
+    const answeredEl = document.getElementById("answered");
+    const totalQEl = document.getElementById("totalQ");
+    const scoreEl = document.getElementById("score");
+    const gradeBtn = document.getElementById("gradeBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const homeBtn = document.getElementById("homeBtn");
+    const modeToggle = document.getElementById("modeToggle");
+    const resultCard = document.getElementById("resultCard");
+    const resultContent = document.getElementById("resultContent"); 
+    const reviewWrongBtn = document.getElementById("reviewWrongBtn");
+    const showAllBtn = document.getElementById("showAllBtn");
+    const dynamicButtons = document.getElementById("dynamicButtons");
+
+    // ==============================================
+    // GENERAR BOTONES DE MENÚ (20, 40 ... 200)
+    // ==============================================
+    function generateMenu() {
+      dynamicButtons.innerHTML = '';
+      for (let i = 20; i <= 200; i += 20) {
+        const btn = document.createElement("button");
+        btn.className = "btn-select";
+        btn.textContent = `${i} Preguntas`;
+        btn.onclick = () => startQuiz(i);
+        dynamicButtons.appendChild(btn);
+      }
+    }
+
+    generateMenu();
+
+    function startQuiz(amount) {
+      currentLimit = amount;
+      
+      // Usar DB completa o la de muestra
+      let pool = MASTER_DB.length > 0 ? [...MASTER_DB] : [];
+      
+      // Barajar preguntas
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      
+      QUESTIONS = pool.slice(0, amount);
+
+      shuffleOptions();
+      setupScreen.classList.add("hide");
+      quizScreen.classList.remove("hide");
+      resultCard.hidden = true;
+      scoreEl.textContent = "0";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      renderQuiz();
+    }
+
+    function goHome() {
+      setupScreen.classList.remove("hide");
+      quizScreen.classList.add("hide");
+      QUESTIONS = [];
+      const existingAudio = document.getElementById("resultAudio");
+      if(existingAudio) { existingAudio.pause(); existingAudio.currentTime = 0; }
+    }
+
+    function shuffleOptions() {
+      QUESTIONS.forEach(item => {
+        const correctText = item[item.ans];
+        let options = [item.A, item.B, item.C, item.D];
+        for (let i = options.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [options[i], options[j]] = [options[j], options[i]];
+        }
+        item.A = options[0]; item.B = options[1]; item.C = options[2]; item.D = options[3];
+        
+        if (item.A === correctText) item.ans = "A";
+        else if (item.B === correctText) item.ans = "B";
+        else if (item.C === correctText) item.ans = "C";
+        else if (item.D === correctText) item.ans = "D";
+      });
+    }
+
+    function renderQuiz() {
+      quizEl.innerHTML = "";
+      totalQEl.textContent = QUESTIONS.length;
+      
+      QUESTIONS.forEach((item, index) => {
+        const card = document.createElement("section");
+        card.className = "card question";
+        card.dataset.idx = index;
+        
+        let innerHTML = `
+          <div class="qhead">
+            <div class="qnum">Pregunta ${index + 1} <span style="font-size:0.8em; color:var(--accent-blue);">(ID #${item.n})</span></div>
+            <div class="qtext">${item.q}</div>
+          </div>
+          <div class="options" role="radiogroup">
+            ${["A","B","C","D"].map(letter => `
+              <label class="opt">
+                <input type="radio" name="q_${index}" value="${letter}" />
+                <span class="opt__letter">${letter}</span>
+                <span class="opt__text">${item[letter]}</span>
+              </label>
+            `).join("")}
+          </div>
+          
+          <textarea class="user-justification" placeholder="Tu justificación (opcional)..."></textarea>
+          
+          <div class="official-explanation">
+            <strong>Explicación Correcta:</strong> ${item.why}
+          </div>
+          
+          <div class="feedback" aria-live="polite"></div>
+        `;
+        card.innerHTML = innerHTML;
+        quizEl.appendChild(card);
+      });
+
+      quizEl.querySelectorAll('input[type="radio"]').forEach(r => {
+        r.addEventListener("change", (e) => {
+          updateStats();
+          const idx = parseInt(r.name.split('_')[1]);
+          if (practiceMode) {
+            checkOneMC(idx);
+          } else {
+            const card = document.querySelector(`.card.question[data-idx="${idx}"]`);
+            card.classList.remove("ok","bad");
+            card.querySelector(".official-explanation").style.display = "none";
+            card.querySelector(".feedback").textContent = "";
+          }
+        });
+      });
+
+      handleModeChange();
+    }
+
+    function checkOneMC(idx) {
+      const item = QUESTIONS[idx];
+      const card = document.querySelector(`.card.question[data-idx="${idx}"]`);
+      if (!item || !card) return;
+
+      const chosen = document.querySelector(`input[name="q_${idx}"]:checked`)?.value;
+      const fb = card.querySelector(".feedback");
+      const expl = card.querySelector(".official-explanation");
+
+      card.classList.remove("ok","bad");
+
+      if (chosen === item.ans) {
+        card.classList.add("ok");
+        fb.textContent = `✅ Correcto`;
+      } else {
+        card.classList.add("bad");
+        fb.textContent = `❌ Incorrecto. La correcta era: ${item.ans}`;
+      }
+      expl.style.display = "block";
+    }
+
+    function updateStats() {
+      let count = 0;
+      QUESTIONS.forEach((item, index) => {
+        if (document.querySelector(`input[name="q_${index}"]:checked`)) count++;
+      });
+      answeredEl.textContent = count;
+    }
+
+    function gradeAll() {
+      let correctMC = 0;
+      let totalMC = 0;
+
+      QUESTIONS.forEach((item, index) => {
+        const card = document.querySelector(`.card.question[data-idx="${index}"]`);
+        const fb = card.querySelector(".feedback");
+        const expl = card.querySelector(".official-explanation");
+        
+        card.classList.remove("ok","bad");
+        totalMC++;
+        
+        const chosen = document.querySelector(`input[name="q_${index}"]:checked`)?.value;
+        
+        expl.style.display = "block";
+
+        if (!chosen) {
+          card.classList.add("bad");
+          fb.textContent = `⚠️ Sin responder. Correcta: ${item.ans}`;
+        } else if (chosen === item.ans) {
+          correctMC++;
+          card.classList.add("ok");
+          fb.textContent = `✅ Correcto`;
+        } else {
+          card.classList.add("bad");
+          fb.textContent = `❌ Incorrecto. Correcta: ${item.ans}`;
+        }
+      });
+
+      const percent = totalMC > 0 ? (correctMC / totalMC) * 100 : 0;
+      scoreEl.textContent = percent.toFixed(0);
+
+      // =============================================
+      // LÓGICA DE RESULTADOS (CORREGIDA .JPEG / .M4A)
+      // =============================================
+      
+      const oldAudio = document.getElementById("resultAudio");
+      if(oldAudio) { oldAudio.pause(); }
+
+      let messageHTML = `<p style="font-size:1.2rem; font-weight:bold; color:var(--text-primary);">Puntaje Final: ${correctMC} de ${totalMC} (${percent.toFixed(0)}%).</p>`;
+      
+      let containerClass = "";
+      let title = "";
+      let imageSrc = "";
+      let audioSrc = "";
+      let extraText = "";
+
+      if (percent === 100) {
+        // CASO 1: NOTA PERFECTA - VEGETO
+        containerClass = "state-perfect";
+        title = "¡PERFECCIÓN ABSOLUTA! ¡YOSHA!";
+        imageSrc = "img/vegeto.jpeg";  // Corregido
+        audioSrc = "img/yosha.mp3";
+        extraText = "Estas listo.";
+
+      } else if (percent >= 70) {
+        // CASO 2: APROBADO - GOKU
+        containerClass = "state-pass";
+        title = "¡HAS SUPERADO TU LÍMITE!";
+        imageSrc = "img/goku.jpeg";    // Corregido
+        audioSrc = "img/tabien.m4a";   // Corregido (.m4a)
+        extraText = "Felicidades, has mejorado mucho pero sigues siendo homofobico";
+
+      } else {
+        // CASO 3: REPROBADO - MEME
+        containerClass = "state-fail";
+        title = "ASI MEJOR ABANDONA LA CARRERA XD";
+        imageSrc = "img/meme.jpg";
+        audioSrc = "img/riendo.mp3";   // Corregido (riendo.mp3)
+        extraText = "\"Tranquilo, la materia se pone mejor cuando la repites el próximo semestre.\"";
+      }
+
+      messageHTML += `
+        <div class="result-container ${containerClass}">
+          <div class="result-title">${title}</div>
+          <img src="${imageSrc}" alt="Resultado" class="result-img" onerror="this.src='https://via.placeholder.com/300?text=IMAGEN+NO+ENCONTRADA'">
+          <div class="result-text">${extraText}</div>
+          
+          <audio id="resultAudio" autoplay>
+            <source src="${audioSrc}">
+          </audio>
+        </div>
+      `;
+
+      resultContent.innerHTML = messageHTML;
+      resultCard.hidden = false;
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+
+    resetBtn.addEventListener("click", () => startQuiz(currentLimit));
+    
+    reviewWrongBtn.addEventListener("click", () => {
+      document.querySelectorAll(".card.question").forEach(card => {
+        if (card.classList.contains("bad")) card.classList.remove("hide");
+        else card.classList.add("hide");
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    showAllBtn.addEventListener("click", () => {
+      document.querySelectorAll(".card.question").forEach(c => c.classList.remove("hide"));
+    });
+
+    gradeBtn.addEventListener("click", gradeAll);
+    homeBtn.addEventListener("click", goHome);
+    
+    modeToggle.addEventListener("change", (e) => {
+      practiceMode = e.target.checked;
+      handleModeChange();
+    });
+
+    function handleModeChange() {
+      const userJustifications = document.querySelectorAll(".user-justification");
+      userJustifications.forEach(el => {
+        el.style.display = practiceMode ? "block" : "none";
+      });
+
+      if (!practiceMode) {
+        document.querySelectorAll(".official-explanation").forEach(el => el.style.display = "none");
+        document.querySelectorAll(".card").forEach(c => {
+            if(resultCard.hidden) {
+              c.classList.remove("ok", "bad");
+              c.querySelector(".feedback").textContent = "";
+            }
+        });
+      }
+    }
+
+    modeToggle.checked = true;
+    handleModeChange();
+  </script>
+</body>
+</html>
